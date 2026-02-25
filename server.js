@@ -109,6 +109,72 @@ app.delete('/accounts/:id', async (req, res) => {
   }
 });
 
+//Transaction endpoints
+
+app.post('/transactions', async (req, res) => {
+  const { from_account_id, to_account_id, amount } = req.body;
+    if (from_account_id == to_account_id) {
+      return res.status(400).send('From account ID and to account ID must be different');
+    }
+    if (!from_account_id || !to_account_id || !amount) {
+      return res.status(400).send('From account ID, to account ID, and amount are required');
+    }
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+     
+      const [fromAccountRows] = await connection.query('SELECT * FROM accounts WHERE id = ? FOR UPDATE', [from_account_id]);
+      if (fromAccountRows.length === 0) {
+        throw new Error('From account not found');
+      }
+      if (fromAccountRows[0].balance < amount) {
+        throw new Error('Insufficient funds in from account');
+      }
+      const [toAccountRows] = await connection.query('SELECT * FROM accounts WHERE id = ? FOR UPDATE', [to_account_id]);
+      if (toAccountRows.length === 0) {
+        throw new Error('To account not found');
+      }
+      const newFromBalance = fromAccountRows[0].balance - amount;
+      const newToBalance = toAccountRows[0].balance + amount;
+      await connection.query('UPDATE accounts SET balance = ? WHERE id = ?', [newFromBalance, from_account_id]);
+      await connection.query('UPDATE accounts SET balance = ? WHERE id = ?', [newToBalance, to_account_id]);
+
+      const [result] = await connection.query('INSERT INTO transactions (from_account_id, to_account_id, amount) VALUES (?, ?, ?)', [from_account_id, to_account_id, amount]);
+      await connection.commit();
+      res.status(201).json({ id: result.insertId, from_account_id, to_account_id, amount });
+    } catch (error) {
+      await connection.rollback();
+      console.error('Error creating transaction:', error);
+      res.status(500).send('Internal Server Error');
+    } finally {
+      connection.release();
+    }
+});
+
+//get transactions
+app.get('/transactions', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM transactions INNER JOIN accounts ON transactions.from_account_id = accounts.id INNER JOIN accounts AS to_accounts ON transactions.to_account_id = to_accounts.id');
+    res.status(200).json(rows);
+  } catch (error) {
+    console.error('Error fetching transactions:', error);
+    res.status(500).send('Internal Server Error');
+  }
+});
+
+app.get('/transactions/:id', async (req, res) => {
+  const transactionId = req.params.id;
+  try {
+    const [rows] = await pool.query('SELECT * FROM transactions INNER JOIN accounts ON transactions.from_account_id = accounts.id INNER JOIN accounts AS to_accounts ON transactions.to_account_id = to_accounts.id WHERE transactions.id = ?', [transactionId]);
+    if (rows.length === 0) {
+      return res.status(404).send('Transaction not found');
+    }
+    res.status(200).json(rows[0]);
+  } catch (error) {
+    console.error('Error fetching transaction:', error);
+    res.status(500).send('Internal Server Error');
+  }
+});
 
 
 app.listen(port, () => {
