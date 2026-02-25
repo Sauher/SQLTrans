@@ -196,11 +196,11 @@ app.get('/results', async (req, res) => {
 app.get('/accounts', (req, res) => {
   res.render('accounts');
 })
-app.post('/accounts', (req, res) => {
+app.post('/accounts', async (req, res) => {
   const {owner,balance} = req.body;
   try{
-    axios.post(`${serverURL}/api/accounts`, {owner, balance})
-      res.redirect('/accounts');
+    await axios.post(`${serverURL}/api/accounts`, {owner, balance});
+    res.redirect('/accounts');
   }
   catch(err){
     console.error('Error creating account:', err);
@@ -210,6 +210,21 @@ app.post('/accounts', (req, res) => {
 app.get('/transactions', async (req, res) => {
   const { data: accounts } = await axios.get(`${serverURL}/api/accounts`);
   res.render('transactions', { accounts});
+});
+
+app.post('/transactions', async (req, res) => {
+  const { from_acc, to_acc, amount } = req.body;
+  try {
+    await axios.post(`${serverURL}/api/transactions`, {
+      from_account_id: from_acc,
+      to_account_id: to_acc,
+      amount: parseFloat(amount)
+    });
+    res.redirect('/results');
+  } catch (err) {
+    console.error('Error creating transaction:', err);
+    res.status(500).send('Internal Server Error');
+  }
 });
 
 app.listen(port, () => {
