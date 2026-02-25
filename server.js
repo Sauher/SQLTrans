@@ -142,7 +142,7 @@ app.post('/api/transactions', async (req, res) => {
       await connection.query('UPDATE accounts SET balance = ? WHERE id = ?', [newFromBalance, from_account_id]);
       await connection.query('UPDATE accounts SET balance = ? WHERE id = ?', [newToBalance, to_account_id]);
 
-      const [result] = await connection.query('INSERT INTO transactions (from_account_id, to_account_id, amount) VALUES (?, ?, ?)', [from_account_id, to_account_id, amount]);
+      const [result] = await connection.query('INSERT INTO transactions (from_acc, to_acc, amount) VALUES (?, ?, ?)', [from_account_id, to_account_id, amount]);
       await connection.commit();
       res.status(201).json({ id: result.insertId, from_account_id, to_account_id, amount });
     } catch (error) {
@@ -157,7 +157,7 @@ app.post('/api/transactions', async (req, res) => {
 //get transactions
 app.get('/api/transactions', async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT * FROM transactions INNER JOIN accounts ON transactions.from_account_id = accounts.id INNER JOIN accounts AS to_accounts ON transactions.to_account_id = to_accounts.id');
+    const [rows] = await pool.query('SELECT * FROM transactions INNER JOIN accounts ON transactions.from_acc= accounts.id INNER JOIN accounts AS to_accounts ON transactions.to_acc = to_accounts.id');
     res.status(200).json(rows);
   } catch (error) {
     console.error('Error fetching transactions:', error);
@@ -168,7 +168,7 @@ app.get('/api/transactions', async (req, res) => {
 app.get('/api/transactions/:id', async (req, res) => {
   const transactionId = req.params.id;
   try {
-    const [rows] = await pool.query('SELECT * FROM transactions INNER JOIN accounts ON transactions.from_account_id = accounts.id INNER JOIN accounts AS to_accounts ON transactions.to_account_id = to_accounts.id WHERE transactions.id = ?', [transactionId]);
+    const [rows] = await pool.query('SELECT * FROM transactions INNER JOIN accounts ON transactions.from_acc = accounts.id INNER JOIN accounts AS to_acc ON transactions.to_acc = to_accounts.id WHERE transactions.id = ?', [transactionId]);
     if (rows.length === 0) {
       return res.status(404).send('Transaction not found');
     }
@@ -181,8 +181,8 @@ app.get('/api/transactions/:id', async (req, res) => {
 
 app.get('/results', async (req, res) => {
   try{
-    const [accounts] = await axios.get(`${serverURL}/api/accounts`);
-    const [transactions] = await axios.get(`${serverURL}/api/transactions`);
+    const { data: accounts } = await axios.get(`${serverURL}/api/accounts`);
+    const { data: transactions } = await axios.get(`${serverURL}/api/transactions`);
     res.render("results", { accounts, transactions });
 
   }
