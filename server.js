@@ -4,6 +4,9 @@ const cors = require('cors');
 const app = express();
 const ejs = require('ejs');
 const port = process.env.PORT || 3000;
+const axios = require('axios');
+
+const serverURL = "http://localhost:3000"
 
 var mysql = require('mysql2/promise');
 
@@ -20,12 +23,12 @@ app.use(express.json());
 app.set('view engine', 'ejs');
 
 app.get('/', (req, res) => {
-  res.render('index');
+  res.redirect('/results');
 });
 
 //GET ALL ACCOUNTS
 
-app.get('/accounts', async (req, res) => {
+app.get('/api/accounts', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM accounts');
     res.status(200).json(rows);
@@ -35,7 +38,7 @@ app.get('/accounts', async (req, res) => {
   }
 });
 
-app.get('/accounts/:id', async (req, res) => {
+app.get('/api/accounts/:id', async (req, res) => {
   const accountId = req.params.id;
   try {
     const [rows] = await pool.query('SELECT * FROM accounts WHERE id = ?', [accountId]);
@@ -49,7 +52,7 @@ app.get('/accounts/:id', async (req, res) => {
   }
 });
 
-app.post('/accounts', async (req, res) => {
+app.post('/api/accounts', async (req, res) => {
   const { owner, balance } = req.body;
   try {
     if (!owner || balance === undefined) {
@@ -63,7 +66,7 @@ app.post('/accounts', async (req, res) => {
   }
 })
 
-app.patch('/accounts/:id', async (req, res) => {
+app.patch('/api/accounts/:id', async (req, res) => {
   const accountId = req.params.id;
   const values = []
   const fields = []
@@ -95,7 +98,7 @@ app.patch('/accounts/:id', async (req, res) => {
   }
 });
 
-app.delete('/accounts/:id', async (req, res) => {
+app.delete('/api/accounts/:id', async (req, res) => {
   const accountId = req.params.id;
   try {
     const [result] = await pool.query('DELETE FROM accounts WHERE id = ?', [accountId]);
@@ -111,7 +114,7 @@ app.delete('/accounts/:id', async (req, res) => {
 
 //Transaction endpoints
 
-app.post('/transactions', async (req, res) => {
+app.post('/api/transactions', async (req, res) => {
   const { from_account_id, to_account_id, amount } = req.body;
     if (from_account_id == to_account_id) {
       return res.status(400).send('From account ID and to account ID must be different');
@@ -152,7 +155,7 @@ app.post('/transactions', async (req, res) => {
 });
 
 //get transactions
-app.get('/transactions', async (req, res) => {
+app.get('/api/transactions', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM transactions INNER JOIN accounts ON transactions.from_account_id = accounts.id INNER JOIN accounts AS to_accounts ON transactions.to_account_id = to_accounts.id');
     res.status(200).json(rows);
@@ -162,7 +165,7 @@ app.get('/transactions', async (req, res) => {
   }
 });
 
-app.get('/transactions/:id', async (req, res) => {
+app.get('/api/transactions/:id', async (req, res) => {
   const transactionId = req.params.id;
   try {
     const [rows] = await pool.query('SELECT * FROM transactions INNER JOIN accounts ON transactions.from_account_id = accounts.id INNER JOIN accounts AS to_accounts ON transactions.to_account_id = to_accounts.id WHERE transactions.id = ?', [transactionId]);
@@ -176,6 +179,18 @@ app.get('/transactions/:id', async (req, res) => {
   }
 });
 
+app.get('/results', async (req, res) => {
+  try{
+    const [accounts] = await axios.get(`${serverURL}/api/accounts`);
+    const [transactions] = await axios.get(`${serverURL}/api/transactions`);
+    res.render("results", { accounts, transactions });
+
+  }
+  catch(err){
+    console.log(err)
+    res.status(500).send('Internal Server Error');
+  }
+})
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
