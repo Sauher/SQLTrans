@@ -20,6 +20,7 @@ var pool = mysql.createPool({
 
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.set('view engine', 'ejs');
 
 app.get('/', (req, res) => {
@@ -183,7 +184,7 @@ app.get('/results', async (req, res) => {
   try{
     const { data: accounts } = await axios.get(`${serverURL}/api/accounts`);
     const { data: transactions } = await axios.get(`${serverURL}/api/transactions`);
-    res.render("results", { accounts, transactions });
+    res.render("index", { accounts, transactions });
 
   }
   catch(err){
@@ -191,6 +192,25 @@ app.get('/results', async (req, res) => {
     res.status(500).send('Internal Server Error');
   }
 })
+
+app.get('/accounts', (req, res) => {
+  res.render('accounts');
+})
+app.post('/accounts', (req, res) => {
+  const {owner,balance} = req.body;
+  try{
+    axios.post(`${serverURL}/api/accounts`, {owner, balance})
+      res.redirect('/accounts');
+  }
+  catch(err){
+    console.error('Error creating account:', err);
+    res.status(500).send('Internal Server Error');
+  }
+})
+app.get('/transactions', async (req, res) => {
+  const { data: accounts } = await axios.get(`${serverURL}/api/accounts`);
+  res.render('transactions', { accounts});
+});
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);

@@ -6,6 +6,43 @@
     <title>Razakcció</title>
 </head>
 <body>
-    Csa
+    <%- include('header') %>
+    <h1>Account Balances</h1>
+    <a href="accounts">New Account</a>
+    <br>
+    <ul>
+        <% accounts.forEach(account => { %>
+            <li><%= account.owner %>: $<%= account.balance %></li>
+        <% }) %>
+    </ul>
+    <hr>
+    <h1>Create Transaction</h1>
+    <a href="/transactions">New Transaction</a>
+    <hr>
+
+    <h1>Transaction History</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>From Account</th>
+                <th>To Account</th>
+                <th>Amount</th>
+                <th>Created At</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% transactions.forEach(transaction => { %>
+                <tr>
+                    <td><%= transaction.id %></td>
+                    <td><%= transaction.from_acc %></td>
+                    <td><%= transaction.to_acc %></td>
+                    <td>$<%= transaction.amount %></td>
+                    <td><%= transaction.created_at %></td>
+                </tr>
+            <% }) %>
+        </tbody>
+    </table>
+    <%- include('footer') %>
 </body>
 </html>
